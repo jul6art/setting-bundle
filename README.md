@@ -170,6 +170,8 @@ A reworded message is formatted by the framework's message formatter (`%name%` p
 - **A message rendered without a request is the shipped one**: an e-mail whose body a worker renders reads no context.
   Translate what must follow the rewording — a subject — where the request is.
 - **A setting holds no secret and no personal data.** There is no secret type on purpose: a secret belongs in a vault.
+- **A provider may declare from data** — the settings an app sends —: the registry collects again after each request
+  or message (`kernel.reset`), never within one.
 - **The cache pool must be shared by every process** that reads settings — a filesystem pool on one server, Redis
   across several — or a write invalidates one process's cache and not the others'.
 

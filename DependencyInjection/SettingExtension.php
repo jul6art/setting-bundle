@@ -70,7 +70,8 @@ class SettingExtension extends Extension implements PrependExtensionInterface
         $container->register(SettingLevels::class)->setArgument('$levels', array_values(self::strings($config['levels'] ?? [])));
         $container->register(SettingRegistry::class)
             ->setArgument('$providers', new TaggedIteratorArgument(self::PROVIDER_TAG))
-            ->setArgument('$levels', new Reference(SettingLevels::class));
+            ->setArgument('$levels', new Reference(SettingLevels::class))
+            ->addTag('kernel.reset', ['method' => 'reset']);
         $container->register(SettingResolver::class)
             ->setArgument('$registry', new Reference(SettingRegistry::class))
             ->setArgument('$levels', new Reference(SettingLevels::class))

@@ -8,7 +8,9 @@ use Jul6Art\SettingBundle\Exception\UnknownSettingException;
 use Jul6Art\SettingBundle\Scope\SettingLevels;
 
 /**
- * Every declared setting, by key — collected once, on first use, from the providers.
+ * Every declared setting, by key — collected on first use, from the providers, and again after each request or message
+ * (`kernel.reset`): a provider may declare from data — the settings an app sends with its manifest —, which a worker
+ * must not keep for its whole life.
  *
  * Two providers declaring the same key, or a setting opening a level the application does not declare, is a mistake of
  * code, not of data: it fails loudly, at the first reading.
@@ -65,5 +67,10 @@ final class SettingRegistry
         }
 
         return $this->definitions = $definitions;
+    }
+
+    public function reset(): void
+    {
+        $this->definitions = null;
     }
 }
