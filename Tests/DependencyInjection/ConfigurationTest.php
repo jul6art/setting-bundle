@@ -20,7 +20,7 @@ use Symfony\Component\Config\Definition\Processor;
 #[CoversClass(Configuration::class)]
 final class ConfigurationTest extends TestCase
 {
-    private const array DEFAULTS = ['enabled' => true, 'levels' => [], 'cache_pool' => 'cache.app', 'translations' => ['override_class' => null, 'locales' => []], 'storage' => ['value_class' => null]];
+    private const array DEFAULTS = ['enabled' => true, 'levels' => [], 'cache_pool' => 'cache.app', 'features' => ['tenant_level' => null], 'translations' => ['override_class' => null, 'locales' => []], 'storage' => ['value_class' => null]];
 
     public function testItsRootNodeIsTheBundleAlias(): void
     {
@@ -40,7 +40,7 @@ final class ConfigurationTest extends TestCase
     public function testItKeepsTheLevelsInTheirOrder(): void
     {
         self::assertSame(
-            ['levels' => ['organization', 'app', 'user'], 'cache_pool' => 'cache.settings', 'storage' => ['value_class' => 'App\Entity\SettingValue'], 'enabled' => true, 'translations' => ['override_class' => null, 'locales' => []]],
+            ['levels' => ['organization', 'app', 'user'], 'cache_pool' => 'cache.settings', 'storage' => ['value_class' => 'App\Entity\SettingValue'], 'enabled' => true, 'features' => ['tenant_level' => null], 'translations' => ['override_class' => null, 'locales' => []]],
             $this->process([['levels' => ['organization', 'app', 'user'], 'cache_pool' => 'cache.settings', 'storage' => ['value_class' => 'App\Entity\SettingValue']]]),
         );
     }

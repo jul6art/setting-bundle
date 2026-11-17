@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Jul6Art\SettingBundle\Tests\Functional;
 
+use Jul6Art\AclBundle\Contract\FeatureCheckerInterface;
 use Jul6Art\SettingBundle\Doctrine\DoctrineSettingStore;
+use Jul6Art\SettingBundle\Feature\Features;
+use Jul6Art\SettingBundle\Feature\SettingFeatureChecker;
 use Jul6Art\SettingBundle\Store\SettingStoreInterface;
 use Jul6Art\SettingBundle\Tests\Fixtures\Entity\SettingValue;
 use PHPUnit\Framework\Attributes\CoversNothing;
@@ -26,6 +29,29 @@ final class ContainerTest extends AbstractFunctionalTestCase
 
         self::assertTrue($container->getParameter('setting.enabled'));
         self::assertInstanceOf(DoctrineSettingStore::class, $container->get(SettingStoreInterface::class));
+    }
+
+    /**
+     * The flags always; acl-bundle's gate answered by them only when the application names its tenant's level.
+     */
+    public function testAclBundlesGateIsAnsweredByTheFlagsWhenAsked(): void
+    {
+        $storage = ['storage' => ['value_class' => SettingValue::class]];
+
+        $without = $this->boot('test', ['levels' => ['organization']] + $storage, withOrm: true);
+        self::assertInstanceOf(Features::class, $without->get(Features::class));
+        self::assertFalse($without->has(FeatureCheckerInterface::class));
+
+        $with = $this->boot('test', ['levels' => ['organization'], 'features' => ['tenant_level' => 'organization']] + $storage, withOrm: true);
+        self::assertInstanceOf(SettingFeatureChecker::class, $with->get(FeatureCheckerInterface::class));
+    }
+
+    public function testATenantLevelTheApplicationDoesNotDeclareIsSaidAtOnce(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('setting.features.tenant_level');
+
+        $this->boot('test', ['levels' => ['organization'], 'features' => ['tenant_level' => 'company'], 'storage' => ['value_class' => SettingValue::class]], withOrm: true);
     }
 
     /**

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Jul6Art\SettingBundle\DependencyInjection;
 
+use Jul6Art\AclBundle\Contract\FeatureCheckerInterface;
 use Jul6Art\SettingBundle\Command\SettingSetCommand;
 use Jul6Art\SettingBundle\Definition\SettingDefinitionProviderInterface;
 use Jul6Art\SettingBundle\Definition\SettingRegistry;
 use Jul6Art\SettingBundle\Doctrine\DoctrineSettingStore;
+use Jul6Art\SettingBundle\Feature\Features;
+use Jul6Art\SettingBundle\Feature\SettingFeatureChecker;
 use Jul6Art\SettingBundle\Resolver\SettingResolver;
 use Jul6Art\SettingBundle\Scope\SettingLevels;
 use Jul6Art\SettingBundle\Store\SettingStoreInterface;
@@ -43,7 +46,8 @@ use Symfony\Component\Translation\TranslatorBagInterface;
  *    `$container->has('some.service')` is always false at this point.
  *
  * Here: the Doctrine store only when `storage.value_class` names an entity, the command only when the console is
- * installed. Whether the application registered a store of its own is a service question — {@see StorePass}.
+ * installed, acl-bundle's feature checker only when acl-bundle is. Whether the application registered a store of its
+ * own is a service question — {@see StorePass}.
  */
 class SettingExtension extends Extension implements PrependExtensionInterface
 {
@@ -85,6 +89,11 @@ class SettingExtension extends Extension implements PrependExtensionInterface
             ->setArgument('$resolver', new Reference(SettingResolver::class))
             ->setArgument('$dispatcher', new Reference('event_dispatcher', ContainerInterface::NULL_ON_INVALID_REFERENCE));
 
+        $container->register(Features::class)
+            ->setArgument('$registry', new Reference(SettingRegistry::class))
+            ->setArgument('$resolver', new Reference(SettingResolver::class));
+        $this->features($container, $config);
+
         $storage = $config['storage'] ?? null;
         $valueClass = \is_array($storage) ? ($storage['value_class'] ?? null) : null;
         if (\is_string($valueClass) && '' !== $valueClass) {
@@ -121,6 +130,29 @@ class SettingExtension extends Extension implements PrependExtensionInterface
                 ->setArgument('$writer', new Reference(SettingWriter::class))
                 ->addTag('console.command', ['command' => 'setting:set']);
         }
+    }
+
+    /**
+     * acl-bundle's feature gate, answered by the flags — when acl-bundle is there and the application names the level of
+     * its tenant. A level it does not declare is said at once, not at the first refused request.
+     *
+     * @param array<array-key, mixed> $config
+     */
+    private function features(ContainerBuilder $container, array $config): void
+    {
+        $features = $config['features'] ?? null;
+        $level = \is_array($features) ? ($features['tenant_level'] ?? null) : null;
+        if (!\is_string($level) || '' === $level || !interface_exists(FeatureCheckerInterface::class)) {
+            return;
+        }
+        if (!\in_array($level, self::strings($config['levels'] ?? []), true)) {
+            throw new \LogicException(\sprintf('setting.features.tenant_level names "%s", which setting.levels does not declare.', $level));
+        }
+
+        $container->register(SettingFeatureChecker::class)
+            ->setArgument('$features', new Reference(Features::class))
+            ->setArgument('$tenantLevel', $level);
+        $container->setAlias(FeatureCheckerInterface::class, SettingFeatureChecker::class);
     }
 
     /**

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Jul6Art\SettingBundle\Tests\Fixtures;
 
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
+use Jul6Art\AclBundle\Contract\FeatureCheckerInterface;
 use Jul6Art\SettingBundle\Command\SettingSetCommand;
 use Jul6Art\SettingBundle\Definition\SettingRegistry;
+use Jul6Art\SettingBundle\Feature\Features;
 use Jul6Art\SettingBundle\Resolver\SettingResolver;
 use Jul6Art\SettingBundle\SettingBundle;
 use Jul6Art\SettingBundle\Store\SettingStoreInterface;
@@ -124,6 +126,8 @@ final class TestKernel extends Kernel
                     SettingSetCommand::class,
                     'translator',
                     TranslationOverrides::class,
+                    Features::class,
+                    FeatureCheckerInterface::class,
                 ];
 
                 foreach ($container->getDefinitions() as $id => $definition) {

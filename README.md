@@ -46,6 +46,9 @@ setting:
     storage:
         # Your entity extending Jul6Art\SettingBundle\Doctrine\AbstractSettingValue.
         value_class: App\Entity\SettingValue
+    features:
+        # With jul6art/acl-bundle: the level whose subject is a user's tenant, for #[RequiresFeature].
+        tenant_level: ~
 ```
 
 `setting.enabled` is also exposed as a container parameter.
@@ -162,6 +165,33 @@ then. `TranslationOverrides` rewords and restores (`reword()`, `restore()`, `Tra
 gives a context's messages by domain (`messages()`) — what a front loads at startup. Cached by scope and language.
 
 A reworded message is formatted by the framework's message formatter (`%name%` parameters), not as ICU.
+
+### 6. Feature flags
+
+A feature flag says what a tenant activated, not what a person may do. It is a boolean setting under `feature.`,
+declared by a provider, overridden in the same cascade and changed by the same writer:
+
+```php
+yield Features::define('reports', default: true, levels: ['organization'], label: 'feature.reports');
+```
+
+```php
+$features->isEnabled('reports', SettingContext::of(['organization' => '42']));
+```
+
+A flag nobody declared is off: a gate that opens when its declaration is missing turns a paid module into a free one.
+
+With `jul6art/acl-bundle`, its `#[RequiresFeature]` reads the flags once you name the level whose subject is a user's
+tenant — the bundle then registers acl-bundle's `FeatureCheckerInterface`:
+
+```yaml
+setting:
+    levels: [organization, app, user]
+    features:
+        tenant_level: organization
+```
+
+Leave `tenant_level` unset to keep a checker of your own.
 
 ### The traps
 
