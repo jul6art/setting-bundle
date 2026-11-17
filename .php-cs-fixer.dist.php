@@ -18,6 +18,15 @@ $finder = new PhpCsFixer\Finder()
     ->in(array_values(array_filter(
         [
             __DIR__.'/DependencyInjection',
+            __DIR__.'/Command',
+            __DIR__.'/Definition',
+            __DIR__.'/Doctrine',
+            __DIR__.'/Event',
+            __DIR__.'/Exception',
+            __DIR__.'/Resolver',
+            __DIR__.'/Scope',
+            __DIR__.'/Store',
+            __DIR__.'/Writer',
             __DIR__.'/Tests',
         ],
         is_dir(...),

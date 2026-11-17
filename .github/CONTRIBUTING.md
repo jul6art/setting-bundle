@@ -10,10 +10,6 @@ which one yours is.
 Read [README.md](../README.md) first; it documents the configuration and the
 contracts. This file covers the workflow.
 
-<!-- Bundle author: once this bundle has a subject of its own, add its house
-     rules to the section below — the ones a pull request gets refused over.
-     The generic ones are already there; yours are the interesting ones. -->
-
 ## Before you open anything
 
 * **Bug** → open an [issue](https://github.com/jul6art/setting-bundle/issues/new/choose)
@@ -116,6 +112,16 @@ the pull request when yours does.
    ships carries an explicit decision — `#[IsGranted(...)]` or
    `denyAccessUnlessGranted(...)` — including the deliberately public ones.
    Silence does not authorise, it forgets to refuse.
+
+8. **A setting is declared in code.** No free key, no value stored without its
+   declaration, no type that holds a secret.
+
+9. **The bundle checks a value, never a permission.** Who may change a setting
+   is the application's to decide; a role or a voter in this bundle would be
+   one application's choice imposed on every other.
+
+10. **A write drops its own scope's cache, and nothing else.** A change that
+    invalidates everything hides a missing invalidation somewhere else.
 
 ## Tests
 

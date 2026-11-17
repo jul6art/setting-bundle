@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace Jul6Art\SettingBundle\Tests\Fixtures;
 
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
+use Jul6Art\SettingBundle\Command\SettingSetCommand;
+use Jul6Art\SettingBundle\Definition\SettingRegistry;
+use Jul6Art\SettingBundle\Resolver\SettingResolver;
 use Jul6Art\SettingBundle\SettingBundle;
+use Jul6Art\SettingBundle\Store\SettingStoreInterface;
+use Jul6Art\SettingBundle\Writer\SettingWriter;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -109,7 +114,12 @@ final class TestKernel extends Kernel
                     'event_dispatcher',
                     'request_stack',
                     'security.token_storage',
-                    // Add the bundle's own services here as the tests need them.
+                    'cache.app',
+                    SettingRegistry::class,
+                    SettingResolver::class,
+                    SettingWriter::class,
+                    SettingStoreInterface::class,
+                    SettingSetCommand::class,
                 ];
 
                 foreach ($container->getDefinitions() as $id => $definition) {
@@ -139,7 +149,12 @@ final class TestKernel extends Kernel
             'http_method_override' => false,
             'handle_all_throwables' => true,
             'php_errors' => ['log' => true],
+            // In memory: two scenarios never share a value through the cache.
+            'cache' => ['app' => 'cache.adapter.array'],
         ]);
+
+        // The settings of the tests, collected as an application's would be: by autoconfiguration.
+        $container->register(TestSettings::class)->setAutoconfigured(true);
 
         if ($this->withOrm) {
             $this->configureDoctrine($container);

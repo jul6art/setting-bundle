@@ -13,9 +13,12 @@
     ],
     "require": {
         "php": "^8.5",
+        "psr/cache": "^3.0",
+        "psr/event-dispatcher": "^1.0",
         "symfony/config": "^7.4 || ^8.0",
         "symfony/dependency-injection": "^7.4 || ^8.0",
         "symfony/http-kernel": "^7.4 || ^8.0",
+        "symfony/service-contracts": "^3.5",
         "symfony/yaml": "^7.4 || ^8.0"
     },
     "require-dev": {
@@ -35,6 +38,11 @@
         "symfony/lock": "^7.4 || ^8.0",
         "symfony/phpunit-bridge": "^7.4 || ^8.0",
         "symfony/var-dumper": "^7.4 || ^8.0"
+    },
+    "suggest": {
+        "doctrine/doctrine-bundle": "To keep the values in the application's table (setting.storage.value_class)",
+        "doctrine/orm": "To keep the values in the application's table (setting.storage.value_class)",
+        "symfony/console": "For setting:set, which sets a value from the command line"
     },
     "autoload": {
         "psr-4": {

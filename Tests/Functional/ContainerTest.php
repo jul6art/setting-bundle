@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Jul6Art\SettingBundle\Tests\Functional;
 
+use Jul6Art\SettingBundle\Doctrine\DoctrineSettingStore;
+use Jul6Art\SettingBundle\Store\SettingStoreInterface;
+use Jul6Art\SettingBundle\Tests\Fixtures\Entity\SettingValue;
 use PHPUnit\Framework\Attributes\CoversNothing;
 
 /**
@@ -17,9 +20,23 @@ use PHPUnit\Framework\Attributes\CoversNothing;
 #[CoversNothing]
 final class ContainerTest extends AbstractFunctionalTestCase
 {
-    public function testTheBundleBoots(): void
+    public function testTheBundleBootsOnDoctrine(): void
     {
-        self::assertTrue($this->boot()->getParameter('setting.enabled'));
+        $container = $this->boot('test', ['levels' => ['organization'], 'storage' => ['value_class' => SettingValue::class]], withOrm: true);
+
+        self::assertTrue($container->getParameter('setting.enabled'));
+        self::assertInstanceOf(DoctrineSettingStore::class, $container->get(SettingStoreInterface::class));
+    }
+
+    /**
+     * Without a store, the container says what to do, rather than failing on a missing reference.
+     */
+    public function testWithoutAStoreItSaysWhatToDo(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('setting.storage.value_class');
+
+        $this->boot();
     }
 
     /**

@@ -5,7 +5,16 @@ parameters:
         max: 80599
     paths:
         - SettingBundle.php
+        - Command
+        - Definition
         - DependencyInjection
+        - Doctrine
+        - Event
+        - Exception
+        - Resolver
+        - Scope
+        - Store
+        - Writer
         - Tests
         - rector.php
     treatPhpDocTypesAsCertain: false

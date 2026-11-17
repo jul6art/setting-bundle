@@ -39,6 +39,13 @@ Configuration
 setting:
     # Leaves the bundle installed and inert when false.
     enabled: true
+    # The levels a value can be set at, from the broadest to the most precise, after the global one.
+    levels: [organization, app, user]
+    # The PSR-6 pool that keeps the values of each scope until one of them changes.
+    cache_pool: cache.app
+    storage:
+        # Your entity extending Jul6Art\SettingBundle\Doctrine\AbstractSettingValue.
+        value_class: App\Entity\SettingValue
 ```
 
 `setting.enabled` is also exposed as a container parameter.
@@ -46,24 +53,95 @@ setting:
 Usage
 -----
 
-<!--
-    Write what a reader has to DO, not what the bundle contains. A line in a table saying a class
-    exists has never helped anyone: someone must be able to use a brick without opening its code.
+### 1. Declare a setting, in code
 
-    For a parent class, show the contract — the methods to implement, one complete example, what
-    the class gives back.
+A setting exists only once declared: a key, a type, a default, its bounds, and the levels where it can be overridden.
+There is no free key, and a value outside the declaration is refused.
 
-    For anything driven by an attribute, four things are needed, because the attribute does not
-    say what it triggers:
+```php
+use Jul6Art\SettingBundle\Definition\SettingDefinition;
+use Jul6Art\SettingBundle\Definition\SettingDefinitionProviderInterface;
+use Jul6Art\SettingBundle\Definition\SettingType;
 
-      1. the annotation in situ, on a realistic class;
-      2. WHAT EXECUTES IT, and when — a command? a Doctrine listener? a request listener? Without
-         this, a reader assumes an attribute acts on its own;
-      3. what to wire on the application side to get anything out of it — the event to subscribe
-         to, the service to implement, the table to create, the configuration to set;
-      4. THE TRAP: what is irreversible, what must be measured first, what silently does nothing
-         when an optional package is missing.
--->
+final class InvitationSettings implements SettingDefinitionProviderInterface
+{
+    public const string LIFETIME = 'invitation.lifetime_days';
+
+    public function definitions(): iterable
+    {
+        yield new SettingDefinition(self::LIFETIME, SettingType::Int, 7, ['organization'], min: 1, max: 30, unit: 'days', label: 'settings.invitation_lifetime');
+    }
+}
+```
+
+Every service implementing `SettingDefinitionProviderInterface` is collected (autoconfiguration). The types are `Bool`,
+`Int` (with `min`, `max` and a `unit` — a duration is an integer of days or minutes), `Text` (`min` and `max` bound its
+length), `Choice` and `List` (an ordered list of `choices`, each at most once — a menu's entries, in their order).
+
+A key declared twice, a default outside its own bounds, or a level the application does not declare fails at the first
+reading: they are mistakes of code, not of data.
+
+### 2. Store the values
+
+The values live in your own table: an entity extending `AbstractSettingValue`, named by `storage.value_class`. It
+declares its table, its id and its unique constraint, and keeps the base class's constructor.
+
+```php
+#[ORM\Entity]
+#[ORM\Table(name: 'setting_value')]
+#[ORM\UniqueConstraint(columns: ['setting_key', 'level', 'subject'])]
+#[ORM\Index(columns: ['level', 'subject'])]
+class SettingValue extends AbstractSettingValue
+{
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    private ?int $id = null;
+}
+```
+
+Then generate its migration. An application keeping its values elsewhere — a satellite reading them from a platform —
+registers a service for `SettingStoreInterface` instead; without either, the container refuses to build and says so.
+
+### 3. Read a value in a context
+
+```php
+$days = $resolver->get(InvitationSettings::LIFETIME, SettingContext::of(['organization' => (string) $organization->getId()]));
+```
+
+`SettingResolver` reads the global level, then each level of the context, broadest first: the most precise value wins,
+the code's default otherwise. `resolve()` says where the value comes from (`source()`), what each level sets (`at()`),
+and what a reset would give (`above($level)`); `resolveAll()` does it for every declared setting — a settings screen.
+
+The values are cached by scope: a reading costs no query when the cache is warm, and one query for every scope it
+misses. A stored value outside its declaration — written before its bounds narrowed — is ignored, and the level above
+applies.
+
+### 4. Change a value
+
+```php
+$writer->set(InvitationSettings::LIFETIME, new Scope('organization', '42'), 14, 'admin@example.org');
+$writer->reset(InvitationSettings::LIFETIME, new Scope('organization', '42'));
+```
+
+`SettingWriter` checks the value and the level, stores it, drops its scope's cache, and dispatches `SettingChanged`
+(before, after, by whom) when something changed. **Who may write is the application's to decide** before calling it:
+the bundle checks a value, not a permission. The Doctrine store flushes: a journal line the caller persisted just before
+goes in the same transaction.
+
+From the command line — the global level, the installation's own value, by default:
+
+```shell
+bin/console setting:set invitation.lifetime_days 14
+bin/console setting:set reports.enabled true --level=app --subject=todo
+bin/console setting:set invitation.lifetime_days --reset
+```
+
+### The traps
+
+- **A subject deleted leaves its values behind** until you call `SettingStoreInterface::removeScope()`. It is a bulk
+  DQL delete: no lifecycle event, listener or Doctrine-based audit sees those rows go.
+- **A setting holds no secret and no personal data.** There is no secret type on purpose: a secret belongs in a vault.
+- **The cache pool must be shared by every process** that reads settings — a filesystem pool on one server, Redis
+  across several — or a write invalidates one process's cache and not the others'.
 
 Quality assurance
 -----------------
