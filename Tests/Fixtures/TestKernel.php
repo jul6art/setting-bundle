@@ -10,6 +10,8 @@ use Jul6Art\SettingBundle\Definition\SettingRegistry;
 use Jul6Art\SettingBundle\Resolver\SettingResolver;
 use Jul6Art\SettingBundle\SettingBundle;
 use Jul6Art\SettingBundle\Store\SettingStoreInterface;
+use Jul6Art\SettingBundle\Translation\TranslationContextProviderInterface;
+use Jul6Art\SettingBundle\Translation\TranslationOverrides;
 use Jul6Art\SettingBundle\Writer\SettingWriter;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Component\Config\Loader\LoaderInterface;
@@ -120,6 +122,8 @@ final class TestKernel extends Kernel
                     SettingWriter::class,
                     SettingStoreInterface::class,
                     SettingSetCommand::class,
+                    'translator',
+                    TranslationOverrides::class,
                 ];
 
                 foreach ($container->getDefinitions() as $id => $definition) {
@@ -151,7 +155,12 @@ final class TestKernel extends Kernel
             'php_errors' => ['log' => true],
             // In memory: two scenarios never share a value through the cache.
             'cache' => ['app' => 'cache.adapter.array'],
+            'translator' => ['enabled' => true, 'fallbacks' => ['en']],
         ]);
+
+        // The context the translation tests set, the application's provider as a test sees it.
+        $container->register(TestTranslationContext::class)->setPublic(true);
+        $container->setAlias(TranslationContextProviderInterface::class, TestTranslationContext::class)->setPublic(true);
 
         // The settings of the tests, collected as an application's would be: by autoconfiguration.
         $container->register(TestSettings::class)->setAutoconfigured(true);

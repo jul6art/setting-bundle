@@ -135,10 +135,40 @@ bin/console setting:set reports.enabled true --level=app --subject=todo
 bin/console setting:set invitation.lifetime_days --reset
 ```
 
+### 5. Reword a message, over the shipped files
+
+A message can be reworded at a level — for an organisation, an app — without a delivery: the translator is decorated,
+and a key reworded for the context of the moment is translated with that text, formatted with its parameters as a
+shipped message is. The files are never rewritten.
+
+```yaml
+setting:
+    translations:
+        override_class: App\Entity\TranslationOverride   # extends Jul6Art\SettingBundle\Translation\AbstractTranslationOverride
+        locales: [fr, en]
+```
+
+```php
+#[ORM\Entity]
+#[ORM\Table(name: 'setting_translation')]
+#[ORM\UniqueConstraint(columns: ['domain', 'locale', 'translation_key', 'level', 'subject'])]
+#[ORM\Index(columns: ['level', 'subject', 'locale'])]
+class TranslationOverride extends AbstractTranslationOverride { /* its id */ }
+```
+
+**Whose rewording applies is the application's to say**: it registers a `TranslationContextProviderInterface`, which
+gives the context of the moment — the request's organisation —, or null (a command, a worker): the shipped messages
+then. `TranslationOverrides` rewords and restores (`reword()`, `restore()`, `TranslationOverrideChanged` dispatched), and
+gives a context's messages by domain (`messages()`) — what a front loads at startup. Cached by scope and language.
+
+A reworded message is formatted by the framework's message formatter (`%name%` parameters), not as ICU.
+
 ### The traps
 
 - **A subject deleted leaves its values behind** until you call `SettingStoreInterface::removeScope()`. It is a bulk
   DQL delete: no lifecycle event, listener or Doctrine-based audit sees those rows go.
+- **A message rendered without a request is the shipped one**: an e-mail whose body a worker renders reads no context.
+  Translate what must follow the rewording — a subject — where the request is.
 - **A setting holds no secret and no personal data.** There is no secret type on purpose: a secret belongs in a vault.
 - **The cache pool must be shared by every process** that reads settings — a filesystem pool on one server, Redis
   across several — or a write invalidates one process's cache and not the others'.

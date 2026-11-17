@@ -26,6 +26,7 @@ $finder = new PhpCsFixer\Finder()
             __DIR__.'/Resolver',
             __DIR__.'/Scope',
             __DIR__.'/Store',
+            __DIR__.'/Translation',
             __DIR__.'/Writer',
             __DIR__.'/Tests',
         ],

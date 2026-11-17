@@ -11,6 +11,11 @@ use Jul6Art\SettingBundle\Doctrine\DoctrineSettingStore;
 use Jul6Art\SettingBundle\Resolver\SettingResolver;
 use Jul6Art\SettingBundle\Scope\SettingLevels;
 use Jul6Art\SettingBundle\Store\SettingStoreInterface;
+use Jul6Art\SettingBundle\Translation\DoctrineTranslationOverrideStore;
+use Jul6Art\SettingBundle\Translation\OverridingTranslator;
+use Jul6Art\SettingBundle\Translation\TranslationContextProviderInterface;
+use Jul6Art\SettingBundle\Translation\TranslationOverrides;
+use Jul6Art\SettingBundle\Translation\TranslationOverrideStoreInterface;
 use Jul6Art\SettingBundle\Writer\SettingWriter;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Console\Command\Command;
@@ -21,6 +26,7 @@ use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\Translation\TranslatorBagInterface;
 
 /**
  * Wires the bundle's services and turns its configuration into something the services can read.
@@ -87,6 +93,28 @@ class SettingExtension extends Extension implements PrependExtensionInterface
             $container->setAlias(SettingStoreInterface::class, DoctrineSettingStore::class);
         }
 
+        $translations = $config['translations'] ?? null;
+        $overrideClass = \is_array($translations) ? ($translations['override_class'] ?? null) : null;
+        if (\is_string($overrideClass) && '' !== $overrideClass && interface_exists(TranslatorBagInterface::class)) {
+            $container->register(DoctrineTranslationOverrideStore::class)
+                ->setArgument('$doctrine', new Reference('doctrine'))
+                ->setArgument('$overrideClass', $overrideClass);
+            $container->setAlias(TranslationOverrideStoreInterface::class, DoctrineTranslationOverrideStore::class);
+            $container->register(TranslationOverrides::class)
+                ->setArgument('$levels', new Reference(SettingLevels::class))
+                ->setArgument('$store', new Reference(TranslationOverrideStoreInterface::class))
+                ->setArgument('$cache', new Reference(\is_string($config['cache_pool'] ?? null) ? $config['cache_pool'] : 'cache.app'))
+                ->setArgument('$locales', array_values(self::strings(\is_array($translations) ? ($translations['locales'] ?? []) : [])))
+                ->setArgument('$dispatcher', new Reference('event_dispatcher', ContainerInterface::NULL_ON_INVALID_REFERENCE))
+                ->addTag('kernel.reset', ['method' => 'reset']);
+            $container->register(OverridingTranslator::class)
+                ->setDecoratedService('translator', null, 0, ContainerInterface::IGNORE_ON_INVALID_REFERENCE)
+                ->setArgument('$translator', new Reference(OverridingTranslator::class.'.inner'))
+                ->setArgument('$overrides', new Reference(TranslationOverrides::class))
+                ->setArgument('$formatter', new Reference('translator.formatter'))
+                ->setArgument('$contexts', new Reference(TranslationContextProviderInterface::class, ContainerInterface::NULL_ON_INVALID_REFERENCE));
+        }
+
         if (class_exists(Command::class)) {
             $container->register(SettingSetCommand::class)
                 ->setArgument('$writer', new Reference(SettingWriter::class))
@@ -105,20 +133,19 @@ class SettingExtension extends Extension implements PrependExtensionInterface
             return;
         }
 
+        $mappings = [];
         foreach ($container->getExtensionConfig($this->getAlias()) as $config) {
             $storage = $config['storage'] ?? null;
             if (\is_array($storage) && \is_string($storage['value_class'] ?? null)) {
-                $container->prependExtensionConfig('doctrine', ['orm' => ['mappings' => [
-                    'Jul6ArtSettingStorage' => [
-                        'type' => 'attribute',
-                        'is_bundle' => false,
-                        'dir' => __DIR__.'/../Doctrine',
-                        'prefix' => 'Jul6Art\\SettingBundle\\Doctrine',
-                    ],
-                ]]]);
-
-                return;
+                $mappings['Jul6ArtSettingStorage'] = ['type' => 'attribute', 'is_bundle' => false, 'dir' => __DIR__.'/../Doctrine', 'prefix' => 'Jul6Art\\SettingBundle\\Doctrine'];
             }
+            $translations = $config['translations'] ?? null;
+            if (\is_array($translations) && \is_string($translations['override_class'] ?? null)) {
+                $mappings['Jul6ArtSettingTranslations'] = ['type' => 'attribute', 'is_bundle' => false, 'dir' => __DIR__.'/../Translation', 'prefix' => 'Jul6Art\\SettingBundle\\Translation'];
+            }
+        }
+        if ([] !== $mappings) {
+            $container->prependExtensionConfig('doctrine', ['orm' => ['mappings' => $mappings]]);
         }
     }
 
