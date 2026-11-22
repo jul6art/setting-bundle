@@ -15,7 +15,7 @@ Settings declared in code, overridden in cascade, changed hot
 Requirements
 ------------
 
-- PHP ^8.5
+- PHP ^8.6
 - Symfony ^7.4 || ^8.0
 
 Installation
