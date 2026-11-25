@@ -6,7 +6,7 @@ namespace Jul6Art\SettingBundle\Translation;
 
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Clock\Clock;
+use Jul6Art\CoreBundle\Util\Clock;
 
 /**
  * A message reworded at a level, for a subject: the text that replaces the shipped one for a key, a domain and a
@@ -41,7 +41,7 @@ abstract class AbstractTranslationOverride
         #[ORM\Column(length: 64)]
         protected string $subject,
     ) {
-        $this->updatedAt = \DateTimeImmutable::createFromInterface(Clock::get()->now());
+        $this->updatedAt = Clock::now();
     }
 
     public function getDomain(): string
@@ -88,6 +88,6 @@ abstract class AbstractTranslationOverride
     {
         $this->message = $message;
         $this->updatedBy = $by;
-        $this->updatedAt = \DateTimeImmutable::createFromInterface(Clock::get()->now());
+        $this->updatedAt = Clock::now();
     }
 }

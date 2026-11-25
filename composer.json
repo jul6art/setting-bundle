@@ -13,9 +13,9 @@
     ],
     "require": {
         "php": "^8.6",
+        "jul6art/core-bundle": "^3.14",
         "psr/cache": "^3.0",
         "psr/event-dispatcher": "^1.0",
-        "symfony/clock": "^7.4 || ^8.0",
         "symfony/config": "^7.4 || ^8.0",
         "symfony/dependency-injection": "^7.4 || ^8.0",
         "symfony/http-kernel": "^7.4 || ^8.0",
