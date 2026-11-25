@@ -6,6 +6,7 @@ namespace Jul6Art\SettingBundle\Doctrine;
 
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Clock\Clock;
 
 /**
  * A value set for a setting, at a level, for a subject: one row each.
@@ -50,7 +51,7 @@ abstract class AbstractSettingValue
         #[ORM\Column(length: 64)]
         protected string $subject,
     ) {
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = \DateTimeImmutable::createFromInterface(Clock::get()->now());
     }
 
     public function getSettingKey(): string
@@ -87,6 +88,6 @@ abstract class AbstractSettingValue
     {
         $this->value = $value;
         $this->updatedBy = $by;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = \DateTimeImmutable::createFromInterface(Clock::get()->now());
     }
 }
